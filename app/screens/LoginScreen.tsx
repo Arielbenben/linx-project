@@ -50,7 +50,7 @@ export default function LoginScreen() {
     const success = await loginWithAPI(username, password);
 
     if (success) {
-      router.replace('/dashboard');
+      router.replace('../(tabs)/dashboard');
     } else {
       setErrorMessage('שם המשתמש או הסיסמה שגויים');
     }
