@@ -4,80 +4,81 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
   I18nManager,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import styles from './LoginScreen.styles';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useUser } from '../../context/UserContext';
+import styles from './LoginScreen.styles';
 
 I18nManager.allowRTL(true);
 
-// קריאת API אמיתית
-async function loginWithAPI(username: string, password: string): Promise<boolean> {
-  try {
-    const url = `https://render-d9ko.onrender.com/api/auth/${encodeURIComponent(username)}/${encodeURIComponent(password)}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-
-    if (!response.ok) {
-      return false;
-    }
-
-    const data = await response.json();
-    return data['is_password_correct'] === true;
-  } catch (error) {
-    console.error('API login error:', error);
-    return false;
-  }
-}
-
-
 export default function LoginScreen() {
   const router = useRouter();
+  const { setSmbId } = useUser();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     setErrorMessage('');
+    setLoading(true);
 
-    const success = await loginWithAPI(username, password);
+    const url = `https://render-d9ko.onrender.com/api/auth/${encodeURIComponent(
+      username
+    )}/${encodeURIComponent(password)}`;
 
-    if (success) {
-      router.replace('../(tabs)/dashboard');
-    } else {
-      setErrorMessage('שם המשתמש או הסיסמה שגויים');
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data['is_password_correct']) {
+        setErrorMessage('שם המשתמש או הסיסמה שגויים');
+      } else {
+        setSmbId(data['smb_id']);
+        router.replace('/(tabs)/dashboard');
+      }
+    } catch (error) {
+      console.error('API login error:', error);
+      setErrorMessage('אירעה שגיאה בשרת');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>BI By Linx</Text>
+      <Text style={styles.logo}>Linx BI</Text>
       <Text style={styles.title}>Sign In</Text>
       <View style={styles.line} />
       <Text style={styles.subtext}>
         שם משתמש וסיסמא מובאים באפליקציה המרכזית של לינקס
       </Text>
 
-      {/* שם משתמש */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="User Name"
-          placeholderTextColor="#999"
-          value={username}
-          onChangeText={setUsername}
-          textAlign="left"
-        />
-      </View>
+<View style={[styles.inputContainer, { flexDirection: 'row-reverse' }]}>
+  <MaterialIcons name="person" size={24} color="#999" style={{ marginLeft: 10 }} />
+  <TextInput
+    style={styles.textInput}
+    placeholder="User Name"
+    placeholderTextColor="#999"
+    value={username}
+    onChangeText={setUsername}
+    textAlign="left"
+  />
+</View>
 
-      {/* סיסמה */}
+
+      {/* Password */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.textInput}
@@ -97,15 +98,23 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* הודעת שגיאה */}
+      {/* Error Message */}
       {errorMessage ? (
         <Text style={styles.errorText}>{errorMessage}</Text>
       ) : null}
 
-      {/* כפתור התחברות */}
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Sign In</Text>
-      </TouchableOpacity>
+      {/* Loading Spinner or Sign In Button */}
+      {loading ? (
+        <ActivityIndicator size="large" color="#5f3dc4" style={{ marginTop: 20 }} />
+      ) : (
+        <TouchableOpacity
+          style={[styles.button, !(username && password) && { opacity: 0.5 }]}
+          onPress={handleLogin}
+          disabled={!(username && password)}
+        >
+          <Text style={styles.buttonText}>Sign In</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
